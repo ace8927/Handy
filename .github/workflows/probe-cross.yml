@@ -1,0 +1,9 @@
+name: Probe Cross-Repo Call
+on:
+  workflow_dispatch:
+jobs:
+  call-upstream-build:
+    uses: cjpais/Handy/.github/workflows/build.yml@main
+    with:
+      platform: windows-latest
+      target: x86_64-pc-windows-msvc
