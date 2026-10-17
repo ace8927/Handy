@@ -1,0 +1,13 @@
+name: Probe Reusable Call
+on:
+  workflow_dispatch:
+jobs:
+  call-build:
+    uses: ./.github/workflows/build.yml
+    with:
+      platform: windows-latest
+      target: x86_64-pc-windows-msvc
+      build-args: ""
+      sign-binaries: false
+      upload-artifacts: true
+      asset-prefix: handy-probe
