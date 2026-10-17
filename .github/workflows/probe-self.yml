@@ -1,8 +1,0 @@
-name: Probe Self Call
-on:
-  workflow_dispatch:
-jobs:
-  call-self-callee:
-    uses: ./.github/workflows/probe-callee.yml
-    with:
-      who: "fork-test"
