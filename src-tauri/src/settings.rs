@@ -8,6 +8,10 @@ use std::fmt;
 use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
 
+fn default_remote_stt_model() -> String {
+    "whisper-1".to_string()
+}
+
 pub const APPLE_INTELLIGENCE_PROVIDER_ID: &str = "apple_intelligence";
 pub const APPLE_INTELLIGENCE_DEFAULT_MODEL_ID: &str = "Apple Intelligence";
 
@@ -143,6 +147,15 @@ pub enum OverlayStyle {
     None,
     Minimal,
     Live,
+}
+
+/// Select which existing STT backend to use; defaults to unmodified local Handy.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum SttMode {
+    #[default]
+    Local,
+    Remote,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
@@ -343,6 +356,10 @@ pub enum VadBackend {
 #[serde(transparent)]
 pub(crate) struct SecretMap(HashMap<String, String>);
 
+impl Default for SecretMap {
+    fn default() -> Self { Self(HashMap::new()) }
+}
+
 impl fmt::Debug for SecretMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted: HashMap<&String, &str> = self
@@ -415,6 +432,16 @@ pub struct AppSettings {
     pub whats_new_last_seen_version: String,
     #[serde(default = "default_model")]
     pub selected_model: String,
+    /// Remote STT is opt-in: existing users keep the original local behavior.
+    #[serde(default)]
+    pub stt_mode: SttMode,
+    #[serde(default)]
+    pub remote_stt_url: String,
+    #[serde(default = "default_remote_stt_model")]
+    pub remote_stt_model: String,
+    /// SecretMap's Debug implementation redacts credentials from startup logs.
+    #[serde(default)]
+    pub remote_stt_api_keys: SecretMap,
     #[serde(default)]
     pub onboarding_completed: bool,
     #[serde(default = "default_always_on_microphone")]
@@ -972,6 +999,10 @@ pub fn get_default_settings() -> AppSettings {
         show_whats_new_on_update: default_show_whats_new_on_update(),
         whats_new_last_seen_version: default_whats_new_last_seen_version(),
         selected_model: "".to_string(),
+        stt_mode: SttMode::Local,
+        remote_stt_url: String::new(),
+        remote_stt_model: default_remote_stt_model(),
+        remote_stt_api_keys: SecretMap::default(),
         onboarding_completed: false,
         always_on_microphone: false,
         selected_microphone: None,

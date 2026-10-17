@@ -664,6 +664,9 @@ impl TranscriptionManager {
 
     /// Kicks off the model loading in a background thread if it's not already loaded
     pub fn initiate_model_load(&self) {
+        if get_settings(&self.app_handle).stt_mode == crate::settings::SttMode::Remote {
+            return;
+        }
         let mut is_loading = self.is_loading.lock().unwrap();
         if *is_loading {
             return;
@@ -683,8 +686,11 @@ impl TranscriptionManager {
                     .store(false, Ordering::Release);
             }
             let settings = get_settings(&self_clone.app_handle);
-            if let Err(e) = self_clone.load_model(&settings.selected_model) {
-                error!("Failed to load model: {}", e);
+            // Mode can change while an already-queued load is waiting.
+            if settings.stt_mode == crate::settings::SttMode::Local {
+                if let Err(e) = self_clone.load_model(&settings.selected_model) {
+                    error!("Failed to load model: {}", e);
+                }
             }
             let mut is_loading = self_clone.is_loading.lock().unwrap();
             *is_loading = false;
@@ -920,14 +926,28 @@ impl TranscriptionManager {
             return Ok(String::new());
         }
 
-        let outcome = match live {
-            Some(outcome) => outcome,
-            None => self.decode_batch(audio)?,
-        };
         let settings = get_settings(&self.app_handle);
-        let final_result = finish_text(outcome, &settings);
+        let final_result = if settings.stt_mode == crate::settings::SttMode::Remote {
+            // No transcribe-cpp model is touched in Remote mode. The same
+            // transcription string then enters Handy's original LLM/paste path.
+            let raw = crate::remote_transcription::transcribe(&settings, &audio)?;
+            let evidence = if settings.selected_language == "auto" {
+                OutputLanguageEvidence::Unknown
+            } else {
+                OutputLanguageEvidence::UserSelected(settings.selected_language.clone())
+            };
+            post_process_transcription_text(raw, &settings, false, &evidence, &[])
+        } else {
+            let outcome = match live {
+                Some(outcome) => outcome,
+                None => self.decode_batch(audio)?,
+            };
+            finish_text(outcome, &settings)
+        };
 
-        let translation_note = if settings.translate_to_english {
+        let translation_note = if settings.translate_to_english
+            && settings.stt_mode == crate::settings::SttMode::Local
+        {
             " (translated)"
         } else {
             ""

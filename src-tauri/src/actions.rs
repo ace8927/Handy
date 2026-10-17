@@ -394,9 +394,13 @@ impl ShortcutAction for TranscribeAction {
         let tm = app.state::<Arc<TranscriptionManager>>();
         let rm = app.state::<Arc<AudioRecordingManager>>();
 
-        // Load ASR model and VAD model in parallel
+        // In Remote mode Handy must never allocate the local ASR model.
+        let remote_stt = get_settings(app).stt_mode == crate::settings::SttMode::Remote;
+        // Load ASR model and VAD model in parallel (local mode only).
         let kickoff_started = Instant::now();
-        tm.initiate_model_load();
+        if !remote_stt {
+            tm.initiate_model_load();
+        }
         let rm_clone = Arc::clone(&rm);
         std::thread::spawn(move || {
             if let Err(e) = rm_clone.preload_vad() {
@@ -407,7 +411,7 @@ impl ShortcutAction for TranscribeAction {
 
         // Don't open the mic if nothing can transcribe the recording; the load
         // kicked off above fails and reports why.
-        if !tm.is_model_loaded() {
+        if !remote_stt && !tm.is_model_loaded() {
             let selected_model = get_settings(app).selected_model;
             if let Err(e) = app
                 .state::<Arc<ModelManager>>()
@@ -435,7 +439,7 @@ impl ShortcutAction for TranscribeAction {
         // Use the app-facing model capability as the single pre-recording source
         // for live streaming decisions. Unknown support is represented as false
         // until the model registry is updated by discovery or runtime load.
-        let model_supports_streaming = selected_model_info
+        let model_supports_streaming = !remote_stt && selected_model_info
             .as_ref()
             .map(|m| m.supports_streaming)
             .unwrap_or(false);
@@ -650,7 +654,24 @@ impl ShortcutAction for TranscribeAction {
                     // otherwise a batch run of the samples. A cancel is surfaced
                     // as an error, so it never starts a batch run.
                     let transcription_time = Instant::now();
-                    let transcription_result = tm.transcribe_recording(samples);
+                    let transcription_result = if get_settings(&ah).stt_mode
+                        == crate::settings::SttMode::Remote
+                    {
+                        // reqwest::blocking must not run on an async Tokio worker;
+                        // only the new remote path is moved to a blocking thread.
+                        let remote_tm = Arc::clone(&tm);
+                        match tauri::async_runtime::spawn_blocking(move || {
+                            remote_tm.transcribe_recording(samples)
+                        })
+                        .await
+                        {
+                            Ok(result) => result,
+                            Err(e) => Err(anyhow::anyhow!("Remote STT task failed: {e}")),
+                        }
+                    } else {
+                        // Preserve the original Handy local processing path.
+                        tm.transcribe_recording(samples)
+                    };
 
                     // Await WAV save and verify
                     let wav_saved = match wav_handle.await {

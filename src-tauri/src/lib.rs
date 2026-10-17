@@ -17,6 +17,7 @@ mod managers;
 mod memory;
 mod overlay;
 mod paste_tx;
+mod remote_transcription;
 pub mod portable;
 mod secure_input;
 mod settings;
@@ -660,6 +661,7 @@ pub fn run(cli_args: CliArgs) {
             shortcut::change_autostart_setting,
             shortcut::change_translate_to_english_setting,
             shortcut::change_selected_language_setting,
+            commands::transcription::configure_remote_stt,
             shortcut::change_overlay_position_setting,
             shortcut::change_overlay_style_setting,
             shortcut::change_debug_mode_setting,

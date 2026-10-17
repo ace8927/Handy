@@ -147,11 +147,13 @@ pub fn switch_active_model(app: &AppHandle, model_id: &str) -> Result<(), String
     settings.selected_model = model_id.to_string();
     settings.onboarding_completed = true;
 
+    let stt_mode = settings.stt_mode;
     write_settings(app, settings);
 
     // Skip eager loading if unload is set to "Immediately" — the model
     // will be loaded on-demand during the next transcription.
-    if unload_timeout == ModelUnloadTimeout::Immediately {
+    if unload_timeout == ModelUnloadTimeout::Immediately
+        || stt_mode == crate::settings::SttMode::Remote {
         // Notify frontend — load_model won't be called so no events
         // would otherwise be emitted.
         let _ = app.emit(
@@ -164,7 +166,7 @@ pub fn switch_active_model(app: &AppHandle, model_id: &str) -> Result<(), String
             },
         );
         log::info!(
-            "Model selection changed to {} (not loading — unload set to Immediately).",
+            "Model selection changed to {} (eager model load skipped).",
             model_id
         );
         return Ok(());

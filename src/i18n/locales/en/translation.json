@@ -626,6 +626,17 @@
           "details": "Handy's local speech-to-text is built on transcribe.cpp and ggml. Thanks to the amazing work by Georgi Gerganov and contributors."
         }
       }
+    },
+    "remoteStt": {
+      "title": "STT engine",
+      "description": "Use the built-in model or an OpenAI-compatible STT server.",
+      "local": "Local",
+      "remote": "Remote STT",
+      "save": "Save STT settings",
+      "saved": "Saved",
+      "url": "Server URL",
+      "model": "Model",
+      "apiKey": "API Key (optional)"
     }
   },
   "footer": {
