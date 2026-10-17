@@ -1,0 +1,13 @@
+name: Probe Callee
+on:
+  workflow_call:
+    inputs:
+      who:
+        required: false
+        type: string
+        default: "nobody"
+jobs:
+  say-hello:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello from callee to ${{ inputs.who }}
