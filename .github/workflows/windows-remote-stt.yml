@@ -1,0 +1,15 @@
+name: Windows Remote STT EXE
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    uses: ./.github/workflows/build.yml
+    with:
+      platform: windows-latest
+      target: x86_64-pc-windows-msvc
+      build-args: ""
+      sign-binaries: false
+      upload-artifacts: true
+      asset-prefix: handy-remote-stt
