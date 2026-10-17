@@ -1,0 +1,9 @@
+name: Probe Pinned Call
+on:
+  workflow_dispatch:
+jobs:
+  call-build-pinned:
+    uses: ./.github/workflows/build.yml@main
+    with:
+      platform: windows-latest
+      target: x86_64-pc-windows-msvc
